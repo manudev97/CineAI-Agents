@@ -1,0 +1,6 @@
+requests
+python_filmaffinity
+streamlit
+beautifulsoup4
+requests-cache==1.1.0
+user-agent==0.1.9
