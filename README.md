@@ -1,4 +1,4 @@
-#CineAIAgents 🎬🤖
+# CineAI-Agents 🎬🤖
 
 **CineAI Agents** is an innovative project that combines artificial intelligence, decentralized storage, and audiovisual content analysis. It consists of two AI agents that work together to analyze and summarize movie and TV reviews from Filmaffinity, store the data in a decentralized manner in Storacha, and provide interactive responses in a Telegram bot.
 
@@ -58,8 +58,20 @@ The project consists of two AI agents:
 - Telegram account for the bot.
 
 ### Steps to Run the Project
-
 1. Clone the repository:
-``` git clone https://github.com/your-username/CineAI-Agents.git
+``` 
+git clone https://github.com/your-username/CineAI-Agents.git
 cd CineAI-Agents
 ```
+2. Install Ollama:
+- Download and install Ollama from its [official website](https://ollama.com/).
+- Follow the installation instructions for your operating system.
+
+3. Download the Stable LM 2 Model:
+
+Once Ollama is installed, download the stablelm2 model (1.6B parameters) by running the following command in your terminal:
+```bash
+ollama pull stable-lm2
+```
+This model is ideal for our project because it supports multiple languages ​​(English, Spanish, German, Italian, French, Portuguese, and Dutch), making it perfect for analyzing comments in different languages.
+
