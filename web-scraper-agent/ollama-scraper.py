@@ -4,13 +4,13 @@ import streamlit as st
 from langchain_ollama import OllamaLLM
 import python_filmaffinity
 
-# Inicializar FilmAffinity
+# Initialize FilmAffinity
 fa = python_filmaffinity.FilmAffinity()
 
 # Load AI Model
-llm = OllamaLLM(model="stablelm2")  # Cambia a "mistral" u otro modelo si es necesario
+llm = OllamaLLM(model="stablelm2")  # Change to "mistral" or another model if necessary
 
-# Función para scrapear los comentarios de una película
+# Function to scrape the comments of a movie
 def scrape_reviews(url):
     try:
         st.write(f'\n 🗃️ Scraping website: {url}')
@@ -20,60 +20,60 @@ def scrape_reviews(url):
         if response.status_code != 200:
             return f"⚠️ Failed to fetch {url}"
 
-        # Extraer los comentarios
+        # Extract the comments
         soup = BeautifulSoup(response.text, "html.parser")
-        reviews = soup.find_all("div", itemprop="reviewBody")
+        reviews = soup.find_all("td", class_="rev-text")
 
         if not reviews:
             return "❌ No reviews found on this page."
 
-        # Extraer el texto de cada comentario
-        text = " ".join([review.get_text(strip=True) for review in reviews])
+        # Extract the text of each comment
+        text = " ".join([review.a.get_text(strip=True) for review in reviews if review.a])
 
-        return text[:2000]  # Limitar caracteres para evitar sobrecargar la IA
+        return text[:2000]  # Limit characters to avoid overloading the AI
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
-# Función para resumir el contenido usando IA
+# Function to summarize content using AI
 def summarize_content(content):
     st.write("✍️ Summarizing content...")
-    return llm.invoke(f"Summarize the following content:\n\n{content[:1000]}")  # Limitar a 1000 caracteres
+    return llm.invoke(f"Summarize the following content:\n\n{content[:1000]}")  # Limit to 1000 characters
 
-# Interfaz de Streamlit
+# UI Streamlit
 st.title("🤖 CineAI-Agents - Web Scraper")
 st.write("💫 Enter a movie title below and get a summary of the reviews!")
 
-# Input del usuario para el título de la película
+# User input for the audiovisual title
 movie_title = st.text_input("🎬 Enter Title of the Audiovisual:")
 
 if movie_title:
-    # Buscar películas relacionadas con el título
+    # Search for movies related to the title
     peliculas = fa.search(title=movie_title)
 
     if not peliculas:
         st.write("❌ No movies found with that title.")
     else:
-        # Mostrar las películas encontradas con un checkbox
+        # Show found movies with a checkbox
         st.write("📋 Select the audiovisual you are interested in:")
         selected_movie = None
 
         for i, pelicula in enumerate(peliculas):
-            # Crear un checkbox para cada película
+            # Create a checkbox for each movie
             if st.checkbox(f"[{pelicula['year']}] {' '.join(dict.fromkeys(pelicula['title'].split('\n')))} | {pelicula['country']} | ID: {pelicula['id']}", key=f"movie_{i}"):
                 selected_movie = pelicula
 
-        # Botón para resumir los comentarios de la película seleccionada
+        # Button to summarize the comments of the selected movie
         if selected_movie and st.button("📄 Summarize Reviews"):
-            # Construir la URL de Filmaffinity para la película seleccionada
-            movie_url = f"https://m.filmaffinity.com/es/film{selected_movie['id']}.html"
+            # Build the Filmaffinity URL for the selected movie
+            movie_url = f"https://www.filmaffinity.com/es/pro-reviews.php?movie-id={selected_movie['id']}"
 
-            # Obtener los comentarios de la película
+            # Get movie reviews
             content = scrape_reviews(movie_url)
 
             if "⚠️ Failed" in content or "❌ Error" in content or "❌ No reviews" in content:
                 st.write(content)
             else:
-                # Resumir los comentarios
+                # Summarize the comments
                 summary = summarize_content(content)
                 st.subheader(f"📄 Reviews Summary for {' '.join(dict.fromkeys(selected_movie['title'].split('\n')))}")
                 st.write(summary)
