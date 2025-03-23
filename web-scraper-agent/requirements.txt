@@ -1,6 +1,10 @@
 requests
+langchain_ollama
+langchain_huggingface
 python_filmaffinity
 streamlit
 beautifulsoup4
+faiss-cpu
+chromadb
 requests-cache==1.1.0
 user-agent==0.1.9

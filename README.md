@@ -18,6 +18,9 @@ The project consists of two AI agents:
 - Answers questions about movies and TV shows based on comments stored in Storacha.
 - Its personality and answers are trained using decentralized data.
 
+3. Storacha
+- We've integrated Storacha to decentrally store the FAISS index and comment data. This ensures that the information is securely and easily accessible on the Filecoin network.
+
 ---
 
 ## **Workflow**
@@ -71,7 +74,7 @@ cd CineAI-Agents
 
 Once Ollama is installed, download the stablelm2 model (1.6B parameters) by running the following command in your terminal:
 ```bash
-ollama pull stable-lm2
+ollama pull stablelm2
 ```
 This model is ideal for our project because it supports multiple languages ​​(English, Spanish, German, Italian, French, Portuguese, and Dutch), making it perfect for analyzing comments in different languages.
 
