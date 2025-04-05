@@ -9,6 +9,13 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.schema import Document
+import subprocess
+from datetime import datetime
+import uuid
+from storacha_utils import StorachaClient
+
+# Inicialización del cliente
+storacha = StorachaClient()
 
 # Initialize FilmAffinity
 fa = python_filmaffinity.FilmAffinity()
@@ -89,31 +96,56 @@ def retrieve_and_answer(query):
     return llm.invoke(f"Based on the following context, answer the question:\n\n{context}\n\nQuestion: {query}\nAnswer:")
 
 # Function to summarize content using AI
-def summarize_content(content):
-    st.write("✍️ Summarizing content...")
-    return llm.invoke(f"Summarize the following content:\n\n{content[:1000]}")  # Limit to 1000 characters
+def summarize_and_upload(content, movie_id, movie_title):
+    """Función combinada que resume y sube a Storacha"""
+    with st.spinner("✍️ Generando resumen..."):
+        summary = llm.invoke(f"Summarize the following content:\n\n{content[:1000]}")
+    
+    st.subheader(f"📄 Reviews Summary for {' '.join(dict.fromkeys(movie_title.split('\n')))}")
+    st.write(summary)
+    
+    # Automatic upload to Storacha
+    with st.spinner("☁️ Subiendo a Storacha..."):
+        # Configure if it is the first time
+        if not storacha.ready:
+            if not storacha.setup():
+                st.error("Error configurando Storacha")
+                return summary
+        
+        # Upload the summary
+        result = storacha.upload_text(summary, movie_title)
+        
+        if result["status"] == "success":
+            st.success("✅ Review uploaded successfully!")
+            st.code(f"CID: {result['cid']}", language="text")
+            st.markdown(f"🔗 [Ver en IPFS Gateway](https://{result['cid']}.ipfs.w3s.link)")
+        else:
+            st.error(f"❌ Error: {result['message']}")
+    
+    return summary
 
 # Function to save FAISS index to a file
 def save_faiss_index(index, filename="faiss_index.idx"):
     faiss.write_index(index, filename)
     return filename
 
-# Function to upload FAISS index to Storacha
-def upload_to_storacha(filename):
-    # Use Storacha CLI or API to upload the file
-    os.system(f"storacha upload {filename}")
-    return f"✅ {filename} uploaded to Storacha."
+# # Function to upload FAISS index to Storacha
+# def upload_to_storacha(filename):
+#     # Use Storacha CLI or API to upload the file
+#     os.system(f"storacha upload {filename}")
+#     return f"✅ {filename} uploaded to Storacha."
 
-# Function to download FAISS index from Storacha
-def download_from_storacha(filename):
-    # Use Storacha CLI or API to download the file
-    os.system(f"storacha download {filename}")
-    return f"✅ {filename} downloaded from Storacha."
+# # Function to download FAISS index from Storacha
+# def download_from_storacha(filename):
+#     # Use Storacha CLI or API to download the file
+#     os.system(f"storacha download {filename}")
+#     return f"✅ {filename} downloaded from Storacha."
 
-# Function to load FAISS index from a file
-def load_faiss_index(filename="faiss_index.idx"):
-    return faiss.read_index(filename)
+# # Function to load FAISS index from a file
+# def load_faiss_index(filename="faiss_index.idx"):
+#     return faiss.read_index(filename)
 
+    
 
 # UI Streamlit
 st.title("🤖 CineAI-Agents - Web Scraper")
@@ -134,7 +166,6 @@ if movie_title:
         selected_movie = None
 
         for i, pelicula in enumerate(peliculas):
-            # Create a checkbox for each movie
             if st.checkbox(f"[{pelicula['year']}] {' '.join(dict.fromkeys(pelicula['title'].split('\n')))} | {pelicula['country']} | ID: {pelicula['id']}", key=f"movie_{i}"):
                 selected_movie = pelicula
 
@@ -149,25 +180,29 @@ if movie_title:
             if "⚠️ Failed" in content or "❌ Error" in content or "❌ No reviews" in content:
                 st.write(content)
             else:
-                # Summarize the comments
-                summary = summarize_content(content)
-                st.subheader(f"📄 Reviews Summary for {' '.join(dict.fromkeys(selected_movie['title'].split('\n')))}")
-                st.write(summary)
+                # Combined process: summarize + upload to Storacha
+                summary = summarize_and_upload(
+                    content,
+                    selected_movie['id'],
+                    selected_movie['title']
+                )
+                
+                # Store in FAISS
                 store_message = store_in_faiss(content, movie_url)
-                st.write(content)
                 st.write(store_message)
-            
-            # Storacha
-            # Example usage
-            if st.button("💾 Save FAISS Index to Storacha"):
-                filename = save_faiss_index(index)
-                upload_message = upload_to_storacha(filename)
-                st.write(upload_message)
 
-            if st.button("📥 Load FAISS Index from Storacha"):
-                download_message = download_from_storacha("faiss_index.idx")
-                index = load_faiss_index()
-                st.write(download_message)
+
+            # # Storacha
+            # # Example usage
+            # if st.button("💾 Save FAISS Index to Storacha"):
+            #     filename = save_faiss_index(index)
+            #     upload_message = upload_to_storacha(filename)
+            #     st.write(upload_message)
+
+            # if st.button("📥 Load FAISS Index from Storacha"):
+            #     download_message = download_from_storacha("faiss_index.idx")
+            #     index = load_faiss_index()
+            #     st.write(download_message)
 
 
 

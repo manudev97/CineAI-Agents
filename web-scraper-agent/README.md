@@ -30,9 +30,16 @@ def get_country(self):
     return cell.img['alt']
 ```
 
+## You Will Need
+Node.js version 18 or higher and npm version 7 or higher to complete this guide.
+
 ## Run Agent
 
 - To start the AI web scraper, run:
 ```bash
-streamlit run ollama-scraper.py
+npm install -g @web3-storage/w3cli
+npm i ipfs-car
+w3 login tu_email@dominio.com
+w3 space create --name "CineAI-Agent"
+streamlit run ollama_scraper_faiss.py
 ```
