@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta
 import shutil
 import uuid
+import tempfile
 
 class StorachaClient:
     def __init__(self, space_did="did:key:z6MkpdA1czti9srpmB63VxmdKT3iwE1Ty75JsBNSbPfwhV36"):
@@ -222,3 +223,138 @@ class StorachaClient:
                 os.remove(temp_file)
             if car_file and os.path.exists(car_file):
                 os.remove(car_file)
+                
+    def upload_binary(self, binary_data, content_name="unnamed_binary"):
+        """Upload binary data directly to Storacha"""
+        temp_file = None
+        car_file = None
+        
+        try:
+            # 1. Create temporary file for the binary data
+            sanitized_name = "".join(c for c in content_name if c.isalnum() or c in (' ', '_')).rstrip()
+            clean_name = sanitized_name.replace(' ', '_')[:50]
+            
+            # Generate filename with UUID
+            filename = f"{clean_name}_{uuid.uuid4().hex[:8]}"
+            temp_file = filename  # No additional suffix needed
+            
+            # Write binary data to temp file
+            with open(temp_file, "wb") as f:
+                f.write(binary_data)
+            
+            # 2. Convert to CAR
+            car_file = f"{temp_file}.car"
+            subprocess.run(
+                [self.ipfs_car_path, "pack", temp_file, "-o", car_file],
+                shell=True,
+                check=True
+            )
+            
+            # 3. Get CAR CID
+            result = subprocess.run(
+                [self.ipfs_car_path, "hash", car_file],
+                capture_output=True,
+                text=True,
+                shell=True,
+                check=True
+            )
+            car_cid = result.stdout.strip()
+            
+            # 4. Get root content CID
+            root_cid_result = subprocess.run(
+                [self.ipfs_car_path, "roots", car_file],
+                capture_output=True,
+                text=True,
+                shell=True,
+                check=True
+            )
+            root_cid = root_cid_result.stdout.strip()
+            
+            # 5. Get file size
+            car_size = os.path.getsize(car_file)
+            
+            # 6. Prepare store/add payload
+            store_payload = {
+                "tasks": [[
+                    "store/add",
+                    self.space_did,
+                    {"link": {"/": car_cid}, "size": car_size}
+                ]]
+            }
+            
+            # 7. Send to Storacha Bridge for store/add
+            store_response = requests.post(
+                self.api_url,
+                headers={
+                    "X-Auth-Secret": self.auth_headers["X-Auth-Secret"],
+                    "Authorization": self.auth_headers["Authorization"],
+                    "Content-Type": "application/json"
+                },
+                json=store_payload
+            )
+            
+            if store_response.status_code != 200:
+                raise Exception(f"Error in store/add: {store_response.text}")
+            
+            store_result = store_response.json()[0]
+            
+            # 8. Check if we need to upload the file
+            if store_result["p"]["out"]["ok"]["status"] == "upload":
+                upload_url = store_result["p"]["out"]["ok"]["url"]
+                upload_headers = {
+                    "content-length": str(car_size),
+                    "x-amz-checksum-sha256": store_result["p"]["out"]["ok"]["headers"]["x-amz-checksum-sha256"],
+                    "content-type": "application/vnd.ipld.car"
+                }
+                
+                # Upload CAR file
+                self._upload_car_to_url(car_file, upload_url, upload_headers)
+            
+            # 9. Register upload in space (upload/add)
+            upload_payload = {
+                "tasks": [[
+                    "upload/add",
+                    self.space_did,
+                    {
+                        "root": {"/": root_cid},
+                        "shards": [{"/": car_cid}]
+                    }
+                ]]
+            }
+            
+            upload_response = requests.post(
+                self.api_url,
+                headers={
+                    "X-Auth-Secret": self.auth_headers["X-Auth-Secret"],
+                    "Authorization": self.auth_headers["Authorization"],
+                    "Content-Type": "application/json"
+                },
+                json=upload_payload
+            )
+            
+            if upload_response.status_code != 200:
+                raise Exception(f"Error in upload/add: {upload_response.text}")
+            
+            return {
+                "status": "success",
+                "cid": root_cid,
+                "url": f"https://{root_cid}.ipfs.w3s.link",
+                "filename": filename
+            }
+            
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+            
+        finally:
+            # Clean up temporary files
+            if temp_file and os.path.exists(temp_file):
+                os.remove(temp_file)
+            if car_file and os.path.exists(car_file):
+                os.remove(car_file)
+    
+    def setup(self):
+        """Setup method for compatibility with earlier code"""
+        return self.ready
