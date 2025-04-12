@@ -3,7 +3,8 @@
 **CineAI Agents** is an innovative project that combines artificial intelligence, decentralized storage, and audiovisual content analysis. It consists of two AI agents that work together to analyze and summarize movie and TV reviews from Filmaffinity, store the data in a decentralized manner in Storacha, and provide interactive responses in a Telegram bot.
 
 <img src="assets/storacha-w3.jpeg" alt="storacha-w3" width="500" height="500"/>
----
+
+✅ **Video Demo**: https://www.youtube.com/watch?v=CDur5ffpOK0
 
 ## **Project Description**
 
@@ -41,7 +42,6 @@ The project consists of two AI agents:
 - Storacha is used to store comments and analysis in a decentralized manner.
 - This makes the data available for future reference and training.
 
----
 
 ## **Technologies Used**
 
